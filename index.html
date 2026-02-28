@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>星 Celestial Birth — Chinese Zodiac Converter</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0d0a08; --paper: #f5f0e8; --red: #c0392b;
+    --gold: #b8922a; --gold-light: #e8c96a; --vermillion: #d4541a;
+    --jade: #2e6b5e; --muted: #8a7d6e; --border: #c8b89a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background-color: var(--paper); color: var(--ink); font-family: 'Cormorant Garamond', serif; min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; z-index: 1000; }
+  .corner { position: fixed; width: 60px; height: 60px; z-index: 10; }
+  .corner-tl { top: 20px; left: 20px; border-top: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+  .corner-tr { top: 20px; right: 20px; border-top: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+  .corner-bl { bottom: 20px; left: 20px; border-bottom: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+  .corner-br { bottom: 20px; right: 20px; border-bottom: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+  .container { max-width: 820px; margin: 0 auto; padding: 60px 30px 80px; }
+
+  header { text-align: center; margin-bottom: 60px; animation: fadeDown 0.8s ease both; }
+  .chinese-char { font-family: 'Noto Serif TC', serif; font-size: 4rem; color: var(--red); display: block; line-height: 1; letter-spacing: 0.2em; margin-bottom: 12px; text-shadow: 2px 2px 0 rgba(192,57,43,0.15); }
+  h1 { font-size: 1.1rem; font-weight: 300; letter-spacing: 0.35em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .tagline { font-style: italic; font-size: 1.15rem; color: var(--gold); }
+  .divider { display: flex; align-items: center; gap: 12px; margin: 24px auto; max-width: 300px; }
+  .divider-line { flex: 1; height: 1px; background: var(--border); }
+  .divider-diamond { width: 6px; height: 6px; background: var(--gold); transform: rotate(45deg); }
+  .nav-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; padding: 8px 20px; border: 1px solid var(--border); color: var(--muted); text-decoration: none; font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; transition: border-color 0.2s, color 0.2s; }
+  .nav-link:hover { border-color: var(--gold); color: var(--gold); }
+
+  .input-section { background: white; border: 1px solid var(--border); padding: 40px; margin-bottom: 40px; position: relative; animation: fadeUp 0.8s 0.2s ease both; box-shadow: 4px 4px 0 var(--border); }
+  .input-section::before { content: '生辰'; position: absolute; top: -14px; left: 30px; background: var(--paper); padding: 0 10px; font-family: 'Noto Serif TC', serif; font-size: 0.85rem; color: var(--gold); letter-spacing: 0.1em; }
+  .form-label { display: block; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; font-family: 'Space Mono', monospace; }
+  .date-input { width: 100%; padding: 14px 18px; font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; border: 1px solid var(--border); background: var(--paper); color: var(--ink); outline: none; transition: border-color 0.2s; margin-bottom: 24px; }
+  .date-input:focus { border-color: var(--gold); }
+  .submit-btn { display: block; width: 100%; padding: 16px; background: var(--red); color: white; border: none; font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; letter-spacing: 0.15em; cursor: pointer; transition: background 0.2s, transform 0.1s; position: relative; overflow: hidden; }
+  .submit-btn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 60%); }
+  .submit-btn:hover { background: var(--vermillion); }
+  .submit-btn:active { transform: translateY(1px); }
+  .error-msg { background: #fee; border: 1px solid #fcc; padding: 16px 20px; color: var(--red); font-size: 0.95rem; display: none; margin-bottom: 12px; }
+
+  #result { display: none; animation: fadeUp 0.6s ease both; }
+
+  .animal-hero { text-align: center; padding: 50px 30px 40px; background: var(--ink); color: var(--paper); position: relative; overflow: hidden; margin-bottom: 2px; }
+  .animal-hero::before { content: attr(data-char); position: absolute; font-family: 'Noto Serif TC', serif; font-size: 14rem; color: rgba(255,255,255,0.04); top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; line-height: 1; }
+  .animal-emoji { font-size: 4rem; display: block; margin-bottom: 16px; position: relative; z-index: 2; }
+  .element-badge { display: inline-block; padding: 4px 14px; border: 1px solid var(--gold-light); color: var(--gold-light); font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; margin-bottom: 16px; position: relative; z-index: 2; }
+  .animal-name { font-size: 3.5rem; font-weight: 300; color: white; line-height: 1; margin-bottom: 8px; position: relative; z-index: 2; }
+  .animal-name span { color: var(--gold-light); font-style: italic; }
+  .lunar-date { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: rgba(255,255,255,0.4); letter-spacing: 0.2em; margin-top: 16px; position: relative; z-index: 2; }
+
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 2px; }
+  .info-card { background: white; border: 1px solid var(--border); padding: 30px; }
+  .info-card.full { grid-column: 1 / -1; }
+  .card-label { font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .card-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .card-content { font-size: 1.05rem; line-height: 1.75; }
+  .traits-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .trait-tag { padding: 4px 12px; border: 1px solid var(--border); font-size: 0.8rem; font-style: italic; color: var(--muted); background: var(--paper); }
+  .trait-tag.positive { border-color: var(--jade); color: var(--jade); }
+  .trait-tag.challenge { border-color: var(--vermillion); color: var(--vermillion); }
+
+  /* ── Dual-year outlook tabs ── */
+  .outlook-wrapper { background: white; border: 1px solid var(--border); }
+  .outlook-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .outlook-tab {
+    flex: 1; padding: 16px 20px; background: transparent; border: none; cursor: pointer;
+    font-family: 'Space Mono', monospace; font-size: 0.62rem; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--muted);
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .outlook-tab:hover { background: var(--paper); color: var(--ink); }
+  .outlook-tab.active { color: var(--ink); border-bottom-color: var(--gold); background: var(--paper); }
+  .tab-badge { padding: 2px 7px; font-size: 0.55rem; border: 1px solid currentColor; letter-spacing: 0.08em; }
+  .outlook-tab.active .tab-badge { background: var(--gold); color: white; border-color: var(--gold); }
+
+  .outlook-panel { display: none; padding: 32px; }
+  .outlook-panel.active { display: block; }
+  .outlook-year-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+  .outlook-year-char { font-family: 'Noto Serif TC', serif; font-size: 2.6rem; color: var(--gold); line-height: 1; }
+  .outlook-year-title { font-size: 1.15rem; font-weight: 600; }
+  .outlook-year-sub { font-family: 'Space Mono', monospace; font-size: 0.58rem; color: var(--muted); letter-spacing: 0.15em; margin-top: 4px; }
+  .outlook-text-body { font-size: 1.05rem; line-height: 1.82; margin-bottom: 24px; color: var(--ink); }
+  .luck-meters-label { font-family: 'Space Mono', monospace; font-size: 0.58rem; color: var(--muted); letter-spacing: 0.22em; margin-bottom: 12px; }
+  .luck-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .luck-label { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--muted); min-width: 52px; }
+  .luck-bar { flex: 1; height: 4px; background: var(--border); overflow: hidden; }
+  .luck-fill { height: 100%; background: var(--gold); transform: scaleX(0); transform-origin: left; transition: transform 0.9s ease; }
+  .luck-fill.animate { transform: scaleX(1); }
+  .luck-pct { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--muted); min-width: 32px; text-align: right; }
+
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeUp   { from { opacity: 0; transform: translateY(20px);  } to { opacity: 1; transform: translateY(0); } }
+  @media (max-width: 600px) {
+    .info-grid { grid-template-columns: 1fr; }
+    .animal-name { font-size: 2.4rem; }
+    .input-section { padding: 28px 18px; }
+    .chinese-char { font-size: 2.8rem; }
+    .outlook-tab { font-size: 0.54rem; padding: 12px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div><div class="corner corner-br"></div>
+<div class="container">
+  <header>
+    <span class="chinese-char">生 肖</span>
+    <h1>Celestial Birth</h1>
+    <div class="divider"><div class="divider-line"></div><div class="divider-diamond"></div><div class="divider-line"></div></div>
+    <p class="tagline">Discover your true Chinese Zodiac sign</p>
+    <a href="zodiac-guide.html" class="nav-link">☰ All Zodiac Signs &amp; Outlooks</a>
+  </header>
+
+  <section class="input-section">
+    <label class="form-label" for="birthdate">Enter your date of birth</label>
+    <input type="date" id="birthdate" class="date-input" />
+    <div class="error-msg" id="error-msg">Please enter a valid date of birth.</div>
+    <button class="submit-btn" onclick="calculate()">Reveal My Celestial Sign →</button>
+  </section>
+
+  <section id="result">
+    <div class="animal-hero" id="animal-hero">
+      <span class="animal-emoji" id="animal-emoji"></span>
+      <div class="element-badge" id="element-badge"></div>
+      <div class="animal-name" id="animal-name"></div>
+      <div class="lunar-date" id="lunar-date"></div>
+    </div>
+    <div class="info-grid">
+      <div class="info-card"><div class="card-label">Element &amp; Yin/Yang</div><div class="card-content" id="element-info"></div></div>
+      <div class="info-card"><div class="card-label">Lucky Numbers &amp; Colors</div><div class="card-content" id="lucky-info"></div></div>
+      <div class="info-card full"><div class="card-label">Strengths &amp; Challenges</div><div class="traits-list" id="traits-list"></div></div>
+      <div class="info-card full"><div class="card-label">Personality</div><div class="card-content" id="personality"></div></div>
+    </div>
+    <div class="outlook-wrapper">
+      <div class="outlook-tabs">
+        <button class="outlook-tab active" id="tab-2026" onclick="switchTab(2026)">🐴 Fire Horse &nbsp;<span class="tab-badge">NOW · 2026</span></button>
+        <button class="outlook-tab" id="tab-2027" onclick="switchTab(2027)">🐐 Fire Goat &nbsp;<span class="tab-badge">NEXT · 2027</span></button>
+      </div>
+      <div class="outlook-panel active" id="panel-2026">
+        <div class="outlook-year-header">
+          <span class="outlook-year-char">馬</span>
+          <div><div class="outlook-year-title">Year of the Fire Horse</div><div class="outlook-year-sub">2026 · 丙午年 · JAN 29, 2026 – FEB 16, 2027</div></div>
+        </div>
+        <p class="outlook-text-body" id="text-2026"></p>
+        <div class="luck-meters-label">LUCK FORECAST 2026</div>
+        <div id="meters-2026"></div>
+      </div>
+      <div class="outlook-panel" id="panel-2027">
+        <div class="outlook-year-header">
+          <span class="outlook-year-char">羊</span>
+          <div><div class="outlook-year-title">Year of the Fire Goat</div><div class="outlook-year-sub">2027 · 丁未年 · FEB 6, 2027 – JAN 25, 2028</div></div>
+        </div>
+        <p class="outlook-text-body" id="text-2027"></p>
+        <div class="luck-meters-label">LUCK FORECAST 2027</div>
+        <div id="meters-2027"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+const springFestival = {
+  1924:[2,5],1925:[1,24],1926:[2,13],1927:[2,2],1928:[1,23],1929:[2,10],1930:[1,30],1931:[2,17],1932:[2,6],1933:[1,26],
+  1934:[2,14],1935:[2,4],1936:[1,24],1937:[2,11],1938:[1,31],1939:[2,19],1940:[2,8],1941:[1,27],1942:[2,15],1943:[2,5],
+  1944:[1,25],1945:[2,13],1946:[2,2],1947:[1,22],1948:[2,10],1949:[1,29],1950:[2,17],1951:[2,6],1952:[1,27],1953:[2,14],
+  1954:[2,3],1955:[1,24],1956:[2,12],1957:[1,31],1958:[2,18],1959:[2,8],1960:[1,28],1961:[2,15],1962:[2,5],1963:[1,25],
+  1964:[2,13],1965:[2,2],1966:[1,21],1967:[2,9],1968:[1,30],1969:[2,17],1970:[2,6],1971:[1,27],1972:[2,15],1973:[2,3],
+  1974:[1,23],1975:[2,11],1976:[1,31],1977:[2,18],1978:[2,7],1979:[1,28],1980:[2,16],1981:[2,5],1982:[1,25],1983:[2,13],
+  1984:[2,2],1985:[2,20],1986:[2,9],1987:[1,29],1988:[2,17],1989:[2,6],1990:[1,27],1991:[2,15],1992:[2,4],1993:[1,23],
+  1994:[2,10],1995:[1,31],1996:[2,19],1997:[2,7],1998:[1,28],1999:[2,16],2000:[2,5],2001:[1,24],2002:[2,12],2003:[2,1],
+  2004:[1,22],2005:[2,9],2006:[1,29],2007:[2,18],2008:[2,7],2009:[1,26],2010:[2,14],2011:[2,3],2012:[1,23],2013:[2,10],
+  2014:[1,31],2015:[2,19],2016:[2,8],2017:[1,28],2018:[2,16],2019:[2,5],2020:[1,25],2021:[2,12],2022:[2,1],2023:[1,22],
+  2024:[2,10],2025:[1,29],2026:[2,17],2027:[2,6],2028:[1,26]
+};
+
+function getLunarYear(date) {
+  const y=date.getFullYear(), m=date.getMonth()+1, d=date.getDate();
+  const sf=springFestival[y];
+  return (sf && (m<sf[0]||(m===sf[0]&&d<sf[1]))) ? y-1 : y;
+}
+const stems = ['Wood','Wood','Fire','Fire','Earth','Earth','Metal','Metal','Water','Water'];
+function getElement(y){ return stems[((y-4)%10+10)%10]; }
+function isYang(y){ return ((y-4)%10+10)%10%2===0; }
+function getAnimalKey(y){
+  return ['rat','ox','tiger','rabbit','dragon','snake','horse','goat','monkey','rooster','dog','pig'][((y-4)%12+12)%12];
+}
+
+const zodiacData = {
+  rat:{emoji:'🐀',char:'鼠',name:'Rat'}, ox:{emoji:'🐂',char:'牛',name:'Ox'},
+  tiger:{emoji:'🐅',char:'虎',name:'Tiger'}, rabbit:{emoji:'🐇',char:'兔',name:'Rabbit'},
+  dragon:{emoji:'🐉',char:'龍',name:'Dragon'}, snake:{emoji:'🐍',char:'蛇',name:'Snake'},
+  horse:{emoji:'🐴',char:'馬',name:'Horse'}, goat:{emoji:'🐐',char:'羊',name:'Goat'},
+  monkey:{emoji:'🐒',char:'猴',name:'Monkey'}, rooster:{emoji:'🐓',char:'雞',name:'Rooster'},
+  dog:{emoji:'🐕',char:'狗',name:'Dog'}, pig:{emoji:'🐖',char:'豬',name:'Pig'},
+};
+
+const zodiacInfo = {
+  rat:{
+    strengths:['Clever','Resourceful','Quick-witted','Charismatic','Adaptable'],
+    challenges:['Manipulative','Stubborn','Selfish at times','Prone to hoarding'],
+    personality:'Rats are shrewd, imaginative, and naturally charming. They excel at noticing opportunities others miss and have a gift for turning situations to their advantage. Deeply loyal to those they love, they can be fiercely protective — though this same intensity occasionally tips into possessiveness.',
+    lucky_numbers:['2','3'], lucky_colors:['Blue','Gold','Green'],
+    compatible:['Ox','Dragon','Monkey'], avoid:['Horse','Rooster'],
+    outlook:{
+      2026:{text:'The Fire Horse year ignites the Rat\'s ambitions with electric energy. Opportunities arrive fast and reward those who act without overthinking — a stretch for the usually calculating Rat, but a productive one. Career momentum is strong, especially in competitive fields. Finances can surge but also overheat; your natural resourcefulness keeps you ahead if greed is kept in check. Social life is vivid and surprising. Guard against the Horse\'s chaotic influence on your carefully laid plans.',luck:{career:0.80,love:0.65,wealth:0.72,health:0.70}},
+      2027:{text:'The Fire Goat year brings warmth and creative abundance perfectly suited to the Rat\'s imaginative mind. Alliances built in 2026\'s frenetic pace now deepen into genuine, lasting partnerships. This is an excellent year for collaborative ventures and for investing in relationships — romantic and professional alike. Financial stability returns after the Horse\'s volatility. Health improves when you allow yourself to receive care rather than always manoeuvring.',luck:{career:0.74,love:0.80,wealth:0.76,health:0.78}}
+    }
+  },
+  ox:{
+    strengths:['Dependable','Patient','Disciplined','Honest','Hardworking'],
+    challenges:['Stubborn','Inflexible','Poor communicator','Overly serious'],
+    personality:'Oxen are the bedrock of any endeavor — steady, tireless, and deeply principled. They rarely seek the spotlight, preferring to let their work speak. This quiet confidence earns them lasting respect, though their resistance to change can sometimes leave them behind when the world shifts.',
+    lucky_numbers:['1','4'], lucky_colors:['White','Yellow','Green'],
+    compatible:['Rat','Snake','Rooster'], avoid:['Goat','Horse','Dog'],
+    outlook:{
+      2026:{text:'The Fire Horse\'s whirlwind pace contrasts with the Ox\'s measured rhythm — but this friction is where your advantage hides. While others rush and stumble, your reliability becomes the rarest currency in the room. Employers and partners prize your steady hand amid the chaos; use this visibility strategically. Love life sparks unexpectedly when you let down your guard. Avoid digging in against change — selective adaptability earns you more ground than stubborn stillness.',luck:{career:0.76,love:0.68,wealth:0.70,health:0.72}},
+      2027:{text:'The Fire Goat year is traditionally challenging for the Ox — Goat and Ox pull in opposing directions. The Goat\'s creative, emotionally fluid energy asks you to develop your softer side, and those who accept this invitation find the year profoundly rewarding on a personal level. Career is steady rather than spectacular. Prioritise meaningful connection and health over relentless ambition. The growth happening quietly inside you this year pays forward into the next cycle.',luck:{career:0.62,love:0.72,wealth:0.60,health:0.68}}
+    }
+  },
+  tiger:{
+    strengths:['Brave','Magnetic','Generous','Passionate','Independent'],
+    challenges:['Impulsive','Arrogant','Reckless','Emotionally volatile'],
+    personality:'Tigers live boldly, charging into life with magnetic energy that draws others into their orbit. Their courage is genuine and their generosity legendary — they give fully of themselves. Yet this same intensity can curdle into recklessness, making them prone to drama and conflict when their authority is challenged.',
+    lucky_numbers:['1','3','4'], lucky_colors:['Blue','Grey','Orange'],
+    compatible:['Horse','Dog','Pig'], avoid:['Ox','Snake','Monkey'],
+    outlook:{
+      2026:{text:'The Fire Horse year is a magnificent release for the Tiger. After cycles of constraint, 2026 finally matches your natural frequency — fast, fierce, and fully alive. Career leaps are strongly favoured; seize high-visibility projects and trust your instincts over committee consensus. Romance blazes with genuine passion. The one shadow: the Horse year amplifies your impulsiveness in equal measure to your brilliance. Channel the fire purposefully — don\'t be consumed by your own heat.',luck:{career:0.88,love:0.82,wealth:0.74,health:0.76}},
+      2027:{text:'The Fire Goat year asks the Tiger to trade the battlefield for the studio — a creative, emotionally intelligent year that rewards compassion over conquest. Your natural magnetism draws collaborators and admirers, but lasting success now comes from listening as much as leading. Financial outlook is solid. In love, vulnerability you rarely show becomes your greatest strength. Let the Goat\'s gentle energy soften the edges that have sometimes cost you.',luck:{career:0.72,love:0.86,wealth:0.70,health:0.80}}
+    }
+  },
+  rabbit:{
+    strengths:['Elegant','Diplomatic','Compassionate','Artistic','Perceptive'],
+    challenges:['Indecisive','Avoidant','Superficial','Overly cautious'],
+    personality:'Rabbits move through the world with grace, preferring harmony to conflict and beauty to harshness. Their social intelligence is unmatched — they know instinctively how to put people at ease. Beneath this serene exterior lies a sharp mind and a deep sensitivity that can make vulnerability feel unbearable.',
+    lucky_numbers:['3','4','9'], lucky_colors:['Red','Pink','Purple'],
+    compatible:['Goat','Pig','Dog'], avoid:['Rooster','Rat','Dragon'],
+    outlook:{
+      2026:{text:'The Fire Horse year\'s frenetic energy unsettles the peace-loving Rabbit, but those who adapt find surprising rewards within the turbulence. Protect your inner equilibrium as a non-negotiable — engage with the world\'s faster pace on your own terms. Creative work gains wider visibility under the Horse\'s expansive influence. In love, passion runs unusually hot; enjoy the warmth, but don\'t sacrifice depth for excitement.',luck:{career:0.65,love:0.72,wealth:0.62,health:0.70}},
+      2027:{text:'The Fire Goat year is the Rabbit\'s natural habitat — artistic, emotionally rich, attuned to beauty and connection. Creative projects reach new heights of expression and recognition. Social life flourishes effortlessly. This is a landmark year for love: long-term partnerships deepen meaningfully, and new connections carry genuine, lasting promise. Financial outlook improves steadily. Simply being authentically yourself is your greatest advantage in 2027.',luck:{career:0.78,love:0.92,wealth:0.72,health:0.84}}
+    }
+  },
+  dragon:{
+    strengths:['Visionary','Confident','Enthusiastic','Inspirational','Lucky'],
+    challenges:['Domineering','Perfectionist','Short-tempered','Unrealistic'],
+    personality:'Dragons are the most mythically powerful of all signs — rare, auspicious, and electrifying. They dream vast and pursue those dreams with unswerving confidence. Natural leaders who inspire devotion, they can also demand too much of themselves and others. The Dragon\'s greatest challenge is learning to share control.',
+    lucky_numbers:['1','6','7'], lucky_colors:['Gold','Silver','Grayish White'],
+    compatible:['Rat','Monkey','Rooster'], avoid:['Ox','Dog','Rabbit'],
+    outlook:{
+      2026:{text:'The Fire Horse year fans the Dragon\'s flames brilliantly — both are creatures of mythic power and 2026 becomes a stage worthy of your grandest ambitions. Leadership roles expand, bold ventures attract backing, and your personal magnetism peaks. Wealth potential is high, though so is the temptation to overreach. In love, defining moments and bold declarations are starred. Step into them without hesitation, but ensure your foundations are solid before you build skyward.',luck:{career:0.90,love:0.78,wealth:0.82,health:0.74}},
+      2027:{text:'The Fire Goat year invites the Dragon to develop emotional intelligence alongside visionary power. Where 2026 rewarded command, 2027 rewards empathy and collaboration. Teams you inspire now will follow you further than those you merely instruct. Creative and humanitarian projects carry special auspiciousness. Financially, consolidate the gains of the Horse year rather than pushing for new peaks. In love, depth of feeling matters more than grand gestures.',luck:{career:0.75,love:0.80,wealth:0.72,health:0.76}}
+    }
+  },
+  snake:{
+    strengths:['Wise','Intuitive','Elegant','Determined','Mysterious'],
+    challenges:['Jealous','Suspicious','Possessive','Vain'],
+    personality:'Snakes possess a rare combination of intellect and intuition that makes them among the most enigmatic signs. They observe deeply before acting, possess remarkable taste, and pursue their goals with unrelenting resolve. In their personal lives they love passionately — sometimes too passionately, as jealousy can be their shadow.',
+    lucky_numbers:['2','8','9'], lucky_colors:['Black','Red','Yellow'],
+    compatible:['Ox','Rooster','Monkey'], avoid:['Tiger','Pig'],
+    outlook:{
+      2026:{text:'Coming off last year\'s powerful birth-year momentum, the Fire Horse demands a full change of gear. The Snake thrives in stillness and strategy; the Horse demands motion and improvisation. Use the wisdom and connections forged in 2025 as your foundation, and be highly selective about what deserves your precious energy this year. Career: consolidate rather than expand. Love: deepen what was built. Guard your inner reserves — this year will spend them freely if you let it.',luck:{career:0.64,love:0.74,wealth:0.66,health:0.68}},
+      2027:{text:'The Fire Goat year restores the Snake\'s natural rhythm. The Goat\'s contemplative, artistic energy aligns beautifully with your intuitive depth, and this becomes a year of quiet but genuinely significant achievement. Creative and intellectual work produces your finest results. Financially, patient positions from the past two years begin to yield their returns. In love, your magnetic mystery draws someone truly worthy of your complexity — be open to receiving as well as captivating.',luck:{career:0.78,love:0.82,wealth:0.76,health:0.80}}
+    }
+  },
+  horse:{
+    strengths:['Energetic','Witty','Free-spirited','Hardworking','Loyal'],
+    challenges:['Impatient','Easily bored','Financially reckless','Self-centered'],
+    personality:'Horses gallop through life at full speed — vibrant, sociable, and utterly irresistible at their best. Their wit and energy light up every room. But stillness is not in their nature, and when commitment requires it, they can bolt. The Horse\'s journey is learning that freedom and depth are not mutually exclusive.',
+    lucky_numbers:['2','3','7'], lucky_colors:['Brown','Yellow','Purple'],
+    compatible:['Tiger','Goat','Dog'], avoid:['Rat','Ox','Rooster'],
+    outlook:{
+      2026:{text:'2026 is YOUR year — the Year of the Fire Horse — and the world finally mirrors your magnificent, galloping energy. Everything accelerates: career, love, opportunity, adventure. Doors open before you knock and people are magnetised by your vitality. You were built for exactly this. The shadow is your own amplified impulsiveness — the Fire element doubles both your brilliance and your recklessness. Guard finances with unusual discipline and think twice before burning bridges that took years to build.',luck:{career:0.93,love:0.88,wealth:0.70,health:0.82}},
+      2027:{text:'Following your spectacular birth year, the Fire Goat asks you to shift from sprinting to flowing — not retreat, but deepening. The connections, opportunities, and seeds planted in 2026 now need tending. Career growth continues through collaboration rather than conquest. In love, the intensity of last year matures into something more sustaining and genuinely real. Financial discipline now pays rich dividends. The Goat\'s gentler tempo is not a slowdown — it is the harvest.',luck:{career:0.75,love:0.82,wealth:0.76,health:0.78}}
+    }
+  },
+  goat:{
+    strengths:['Gentle','Empathetic','Creative','Generous','Elegant'],
+    challenges:['Pessimistic','Timid','Indecisive','Dependent'],
+    personality:'Goats are the dreamers and artists of the zodiac — sensitive, deeply empathetic, and possessed of natural aesthetic grace. They thrive in nurturing environments and give generously of their creativity. Their vulnerability is real; without stability they can drift into worry and over-reliance on others.',
+    lucky_numbers:['2','7'], lucky_colors:['Brown','Red','Purple'],
+    compatible:['Rabbit','Horse','Pig'], avoid:['Ox','Dog','Rat'],
+    outlook:{
+      2026:{text:'The Fire Horse year brings the Goat into high-energy territory that can feel both thrilling and disorienting. The Horse\'s momentum is yours to ride strategically rather than resist. Your creative gifts translate powerfully in this expansive cultural moment — this is a year to boldly exhibit your work and claim visible space. Love is particularly highlighted; Horse and Goat energy is naturally compatible. Anchor yourself with daily routine to counteract the anxiety this pace can stir.',luck:{career:0.72,love:0.84,wealth:0.64,health:0.68}},
+      2027:{text:'2027 is YOUR year — the Fire Goat — carrying the gentlest, most artistically fertile energy in the twelve-year cycle. Everything you have cultivated in your inner life now blooms outwardly. Creative recognition, romantic fulfilment, and deep personal growth are all strongly starred. This is a year to invest deeply in what and whom you love, without reservation. Financial caution in the first quarter gives way to steady abundance. Trust your instincts — they are extraordinarily reliable this year.',luck:{career:0.80,love:0.94,wealth:0.72,health:0.86}}
+    }
+  },
+  monkey:{
+    strengths:['Inventive','Witty','Versatile','Sociable','Shrewd'],
+    challenges:['Deceptive','Self-important','Distrustful','Jealous'],
+    personality:'Monkeys are the tricksters, innovators, and entertainers of the zodiac — never dull, always surprising. Their minds move fast and delight in complexity. Enormously capable of affection and loyalty, they can also be mischievous in ways that bruise trust. The Monkey flourishes when brilliance is channeled rather than scattered.',
+    lucky_numbers:['1','7','8'], lucky_colors:['White','Blue','Gold'],
+    compatible:['Rat','Dragon','Snake'], avoid:['Tiger','Pig'],
+    outlook:{
+      2026:{text:'The Fire Horse year is a playground tailor-made for the agile Monkey. Speed, wit, and adaptability — your greatest assets — become the defining currency of success in 2026. Multiple opportunities appear simultaneously; the challenge is choosing wisely, not accessing them. Entrepreneurial and innovation-led ventures are especially well-starred. In love, your spontaneity and humour are irresistible this year. Ensure your promises match your follow-through — the Horse year has a long memory for betrayal.',luck:{career:0.86,love:0.76,wealth:0.80,health:0.78}},
+      2027:{text:'The Fire Goat year asks the Monkey to slow the mental chatter and develop emotional depth alongside intellectual brilliance. Creative partnerships and collaborative projects produce your most meaningful work to date. Financial rewards from the Horse year\'s hustle begin to compound with pleasing regularity. In love, genuine vulnerability — rather than your usual wit and deflection — unlocks the connection you\'ve privately been craving. A year of inner growth as significant as any outer achievement.',luck:{career:0.74,love:0.80,wealth:0.76,health:0.74}}
+    }
+  },
+  rooster:{
+    strengths:['Observant','Hardworking','Courageous','Talented','Punctual'],
+    challenges:['Boastful','Vain','Critical of others','Opinionated'],
+    personality:'Roosters shine brightest in the light — they love to be seen, and they\'ve earned it. Meticulous, capable, and remarkably observant, they notice what others miss and execute with precision. Their social confidence sometimes tips into self-promotion that alienates, but their fundamental work ethic and reliability make them invaluable.',
+    lucky_numbers:['5','7','8'], lucky_colors:['Gold','Brown','Yellow'],
+    compatible:['Ox','Dragon','Snake'], avoid:['Rat','Rabbit','Horse'],
+    outlook:{
+      2026:{text:'Rooster and Horse exist in natural creative friction — the Horse\'s improvisation challenges your love of precision, but that tension produces remarkable results when consciously embraced. Your extraordinary organisational ability becomes indispensable in the Horse year\'s fast-moving landscape; others rely on you to maintain coherence amid the chaos. Career visibility is high and well-deserved. In love, ease your critical tendencies — warmth opens doors your standards alone cannot.',luck:{career:0.78,love:0.62,wealth:0.72,health:0.74}},
+      2027:{text:'The Fire Goat year softens the Rooster\'s sharp edges in profoundly rewarding ways. Creative and artistic instincts you sometimes suppress in favour of practicality now find genuine expression and real appreciation. Collaborative projects thrive. Romantic prospects improve markedly when you lead with warmth rather than critique — and the improvement will be immediate and striking. Financial planning from the Horse year pays dividends. Health benefits from replacing stress with genuine pleasure.',luck:{career:0.72,love:0.78,wealth:0.76,health:0.80}}
+    }
+  },
+  dog:{
+    strengths:['Loyal','Courageous','Honest','Diligent','Warm-hearted'],
+    challenges:['Anxious','Stubborn','Overly critical','Suspicious'],
+    personality:'Dogs are the moral compass of the zodiac — fiercely loyal, honest to a fault, and driven by deep ethical convictions. They are the friend you call at 3am, and they show up. Their anxiety can be burdensome and their critical nature can feel like a standard no one can meet. But their love, once given, is unconditional.',
+    lucky_numbers:['3','4','9'], lucky_colors:['Green','Red','Purple'],
+    compatible:['Rabbit','Tiger','Horse'], avoid:['Ox','Dragon','Goat'],
+    outlook:{
+      2026:{text:'The Fire Horse is a natural ally to the Dog — Horse and Dog are among the most harmonious pairings in the zodiac — and 2026 brings energy, opportunity, and a welcome sense of forward momentum. Career advances through bold, timely action; trust your instincts more than usual. Love deepens or ignites with equal force. Your loyalty and warmth attract genuinely worthy people this year. Channel the Horse\'s abundant energy into productive outlets to maintain the health and calm you need.',luck:{career:0.82,love:0.84,wealth:0.72,health:0.74}},
+      2027:{text:'The Fire Goat year introduces friction for the Dog — Goat and Dog pull in opposing emotional directions. Navigate relationship dynamics with patience rather than rigidity this year. The year\'s creative and humanitarian themes, however, deeply suit the Dog\'s sense of justice and care for others. Career is steady and respected rather than dramatic. Focus on emotional health as your primary investment — what you build inside yourself this cycle compounds powerfully into the next.',luck:{career:0.66,love:0.72,wealth:0.64,health:0.66}}
+    }
+  },
+  pig:{
+    strengths:['Sincere','Tolerant','Kind','Warm-hearted','Honest'],
+    challenges:['Naive','Over-reliant','Easily manipulated','Materialistic'],
+    personality:'Pigs approach life with a full, open heart — trusting, generous, and genuinely kind in a world that often mistakes this for weakness. They love pleasure and comfort and freely share both. This abundance of goodwill can make them vulnerable to those who would take advantage. The Pig\'s greatest strength is also their most tender spot: they believe in the best of people.',
+    lucky_numbers:['2','5','8'], lucky_colors:['Yellow','Grey','Brown'],
+    compatible:['Tiger','Rabbit','Goat'], avoid:['Snake','Monkey'],
+    outlook:{
+      2026:{text:'The Fire Horse year brings exhilarating energy that can sweep the warm-hearted Pig into adventures both wonderful and unwise. Your natural generosity is a gift, but this fast-moving year attracts people who may not deserve it — practise discernment as a deliberate daily discipline. Career opportunities are real and should be seized with more decisiveness than feels natural. In love, the Horse year\'s passionate energy suits you beautifully when your boundaries are clearly held.',luck:{career:0.70,love:0.76,wealth:0.62,health:0.72}},
+      2027:{text:'The Fire Goat year is a genuine homecoming for the Pig. Both signs share deep wells of empathy, creativity, and love for life\'s pleasures, and 2027 becomes one of your most personally fulfilling years in the entire cycle. Creative projects flourish and find their rightful audience. Love life blossoms with sincerity and warmth. Financially, the year rewards generosity returned — what you have given comes back to you multiplied. Trust in your fundamental goodness; it is fully vindicated this year.',luck:{career:0.76,love:0.88,wealth:0.74,health:0.84}}
+    }
+  }
+};
+
+const luckLabels={career:'Career',love:'Love',wealth:'Wealth',health:'Health'};
+
+function calculate(){
+  const input=document.getElementById('birthdate').value;
+  const errorEl=document.getElementById('error-msg');
+  const resultEl=document.getElementById('result');
+  if(!input){errorEl.style.display='block';resultEl.style.display='none';return;}
+  errorEl.style.display='none';
+  const date=new Date(input+'T12:00:00');
+  const lunarYear=getLunarYear(date);
+  const animalKey=getAnimalKey(lunarYear);
+  const element=getElement(lunarYear);
+  const yang=isYang(lunarYear);
+  const animal=zodiacData[animalKey];
+  const info=zodiacInfo[animalKey];
+  const yinYang=yang?'Yang':'Yin';
+
+  document.getElementById('animal-hero').setAttribute('data-char',animal.char);
+  document.getElementById('animal-emoji').textContent=animal.emoji;
+  document.getElementById('element-badge').textContent=`${yinYang} · ${element}`;
+  document.getElementById('animal-name').innerHTML=`<span>${element}</span> ${animal.name}`;
+  document.getElementById('lunar-date').textContent=`Lunar Year ${lunarYear} · ${animal.char}`;
+  document.getElementById('element-info').innerHTML=`<strong>${element}</strong> energy governs your sign, combined with the <strong>${yinYang}</strong> polarity.<br><br>${getElementDesc(element,yang)}`;
+  document.getElementById('lucky-info').innerHTML=`<strong>Numbers:</strong> ${info.lucky_numbers.join(', ')}<br><strong>Colors:</strong> ${info.lucky_colors.join(', ')}<br><br><strong>Best companions:</strong> ${info.compatible.join(', ')}<br><strong>Friction with:</strong> ${info.avoid.join(', ')}`;
+
+  const tEl=document.getElementById('traits-list'); tEl.innerHTML='';
+  info.strengths.forEach(t=>{tEl.innerHTML+=`<span class="trait-tag positive">${t}</span>`;});
+  info.challenges.forEach(t=>{tEl.innerHTML+=`<span class="trait-tag challenge">${t}</span>`;});
+  document.getElementById('personality').textContent=info.personality;
+
+  [2026,2027].forEach(yr=>{
+    document.getElementById(`text-${yr}`).textContent=info.outlook[yr].text;
+    const mEl=document.getElementById(`meters-${yr}`); mEl.innerHTML='';
+    for(const[k,v] of Object.entries(info.outlook[yr].luck)){
+      mEl.innerHTML+=`<div class="luck-row"><span class="luck-label">${luckLabels[k]}</span><div class="luck-bar"><div class="luck-fill" style="width:${v*100}%"></div></div><span class="luck-pct">${Math.round(v*100)}%</span></div>`;
+    }
+  });
+
+  resultEl.style.display='block';
+  resultEl.scrollIntoView({behavior:'smooth',block:'start'});
+  switchTab(2026);
+  setTimeout(()=>animateBars(2026),400);
+}
+
+function switchTab(year){
+  document.querySelectorAll('.outlook-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.outlook-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(`tab-${year}`).classList.add('active');
+  document.getElementById(`panel-${year}`).classList.add('active');
+  document.querySelectorAll('.luck-fill').forEach(el=>el.classList.remove('animate'));
+  setTimeout(()=>animateBars(year),80);
+}
+
+function animateBars(year){
+  document.querySelectorAll(`#meters-${year} .luck-fill`).forEach(el=>el.classList.add('animate'));
+}
+
+function getElementDesc(el,yang){
+  const d={
+    Wood:yang?'Yang Wood brings ambitious growth, like a great tree reaching skyward. You lead with vision and thrive through expansion and forward momentum.':'Yin Wood is like flowers and grass — flexible, adaptable, and resilient. You bend without breaking and find beauty in nuance.',
+    Fire:yang?'Yang Fire blazes like the sun — radiant, commanding, and transformative. Your presence is felt before you speak, and your enthusiasm ignites others.':'Yin Fire glows like a candle — warm, nurturing, and luminous within intimacy. Your light is steady, precious, and deeply sustaining.',
+    Earth:yang?'Yang Earth is the mountain — solid, reliable, and enduring. You anchor those around you and find your power in constancy and depth.':'Yin Earth is fertile ground — receptive, nurturing, and quietly powerful. You support the growth of everything around you.',
+    Metal:yang?'Yang Metal shines like a blade — precise, principled, and uncompromising. Your clarity and decisiveness cut through confusion.':'Yin Metal shines like jewelry — refined, discerning, and beautiful. You value quality over quantity in all domains of life.',
+    Water:yang?'Yang Water flows like the ocean — vast, mysterious, and capable of immense force. Your depth of feeling and adaptability are extraordinary.':'Yin Water is like a still pool — reflective, intuitive, and spiritually sensitive. You sense undercurrents others cannot perceive.',
+  };
+  return d[el]||'';
+}
+
+document.getElementById('birthdate').addEventListener('keydown',e=>{if(e.key==='Enter')calculate();});
+</script>
+</body>
+</html>
