@@ -14,7 +14,8 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background-color: var(--paper); color: var(--ink); font-family: 'Cormorant Garamond', serif; min-height: 100vh; overflow-x: hidden; }
   body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; z-index: 1000; }
-  .corner { position: fixed; width: 60px; height: 60px; z-index: 10; }
+  .corner { position: fixed; width: 60px; height: 60px; z-index: 10; transition: opacity 0.4s; }
+  .corner.hidden { opacity: 0; pointer-events: none; }
   .corner-tl { top: 20px; left: 20px; border-top: 2px solid var(--gold); border-left: 2px solid var(--gold); }
   .corner-tr { top: 20px; right: 20px; border-top: 2px solid var(--gold); border-right: 2px solid var(--gold); }
   .corner-bl { bottom: 20px; left: 20px; border-bottom: 2px solid var(--gold); border-left: 2px solid var(--gold); }
@@ -34,7 +35,7 @@
   .input-section { background: white; border: 1px solid var(--border); padding: 40px; margin-bottom: 40px; position: relative; animation: fadeUp 0.8s 0.2s ease both; box-shadow: 4px 4px 0 var(--border); }
   .input-section::before { content: '生辰'; position: absolute; top: -14px; left: 30px; background: var(--paper); padding: 0 10px; font-family: 'Noto Serif TC', serif; font-size: 0.85rem; color: var(--gold); letter-spacing: 0.1em; }
   .form-label { display: block; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; font-family: 'Space Mono', monospace; }
-  .date-input { width: 100%; padding: 14px 18px; font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; border: 1px solid var(--border); background: var(--paper); color: var(--ink); outline: none; transition: border-color 0.2s; margin-bottom: 24px; }
+  .date-input { width: 100%; max-width: 100%; padding: 14px 18px; font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; border: 1px solid var(--border); background: var(--paper); color: var(--ink); outline: none; transition: border-color 0.2s; margin-bottom: 24px; box-sizing: border-box; -webkit-appearance: none; }
   .date-input:focus { border-color: var(--gold); }
   .submit-btn { display: block; width: 100%; padding: 16px; background: var(--red); color: white; border: none; font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; letter-spacing: 0.15em; cursor: pointer; transition: background 0.2s, transform 0.1s; position: relative; overflow: hidden; }
   .submit-btn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 60%); }
@@ -165,6 +166,8 @@
 </div>
 
 <script>
+// ── Full Lunar Date Conversion ────────────────────────────────────────────
+// springFestival: [month, day] of Chinese New Year for each Gregorian year
 const springFestival = {
   1924:[2,5],1925:[1,24],1926:[2,13],1927:[2,2],1928:[1,23],1929:[2,10],1930:[1,30],1931:[2,17],1932:[2,6],1933:[1,26],
   1934:[2,14],1935:[2,4],1936:[1,24],1937:[2,11],1938:[1,31],1939:[2,19],1940:[2,8],1941:[1,27],1942:[2,15],1943:[2,5],
@@ -176,13 +179,191 @@ const springFestival = {
   1994:[2,10],1995:[1,31],1996:[2,19],1997:[2,7],1998:[1,28],1999:[2,16],2000:[2,5],2001:[1,24],2002:[2,12],2003:[2,1],
   2004:[1,22],2005:[2,9],2006:[1,29],2007:[2,18],2008:[2,7],2009:[1,26],2010:[2,14],2011:[2,3],2012:[1,23],2013:[2,10],
   2014:[1,31],2015:[2,19],2016:[2,8],2017:[1,28],2018:[2,16],2019:[2,5],2020:[1,25],2021:[2,12],2022:[2,1],2023:[1,22],
-  2024:[2,10],2025:[1,29],2026:[2,17],2027:[2,6],2028:[1,26]
+  2024:[2,10],2025:[1,29],2026:[2,17],2027:[2,6],2028:[1,26],2029:[2,13],2030:[2,3]
 };
 
+// Lunar month lengths per year: [leapMonth (0=none), ...month day counts]
+// 29=short month, 30=long month. Leap month is inserted after its number.
+const lunarMonths = {
+  1924:[5,29,30,29,29,30,29,30,29,30,30,30,29,30],
+  1925:[0,30,29,30,29,29,30,29,30,29,30,29,30],
+  1926:[0,29,30,30,29,30,29,30,29,30,29,30,29],
+  1927:[6,30,29,30,30,29,30,29,30,29,30,29,29,30],
+  1928:[0,30,30,29,30,29,30,29,30,29,30,29,30],
+  1929:[0,29,30,29,30,29,30,30,29,30,29,30,29],
+  1930:[5,30,29,30,29,30,29,30,30,29,29,30,29,30],
+  1931:[0,29,30,29,30,29,30,29,30,29,30,30,30],
+  1932:[0,29,29,30,29,30,29,30,29,30,30,30,29],
+  1933:[5,30,29,29,30,29,29,30,29,30,30,30,29,30],
+  1934:[0,30,30,29,29,30,29,29,30,29,30,30,29],
+  1935:[0,30,30,29,30,29,30,29,29,30,29,30,29],
+  1936:[4,30,30,30,29,30,29,30,29,29,30,29,30,29],
+  1937:[0,30,30,29,30,30,29,30,29,30,29,29,30],
+  1938:[0,29,30,29,30,30,29,30,29,30,30,29,30],
+  1939:[7,29,29,30,29,30,30,29,30,29,30,30,29,30],
+  1940:[0,29,29,30,29,29,30,30,29,30,30,29,30],
+  1941:[0,30,29,29,30,29,29,30,29,30,30,29,30],
+  1942:[6,30,29,30,29,30,29,29,30,29,30,29,30,30],
+  1943:[0,29,30,30,29,30,29,29,30,29,30,29,30],
+  1944:[0,29,30,30,29,30,30,29,29,30,29,30,29],
+  1945:[4,30,29,30,30,29,30,30,29,29,30,29,30,29],
+  1946:[0,30,29,30,29,30,30,29,30,29,30,29,29],
+  1947:[0,30,29,30,29,30,30,29,30,30,29,30,29],
+  1948:[2,29,30,29,30,29,30,29,30,30,29,30,30,29],
+  1949:[0,29,30,29,29,30,29,30,30,30,29,30,29],
+  1950:[0,30,29,30,29,29,30,29,30,30,29,30,30],
+  1951:[7,29,30,29,30,29,29,30,29,30,29,30,30,30],
+  1952:[0,29,30,29,30,29,29,30,29,30,29,30,30],
+  1953:[0,30,29,30,29,30,29,29,30,29,30,29,30],
+  1954:[5,30,29,30,30,29,30,29,29,30,29,30,29,30],
+  1955:[0,29,30,30,29,30,29,30,29,29,30,29,30],
+  1956:[0,29,30,30,29,30,30,29,30,29,29,30,29],
+  1957:[8,30,29,30,29,30,30,29,30,30,29,29,30,29],
+  1958:[0,30,29,30,29,30,29,30,30,29,30,29,30],
+  1959:[0,29,30,29,29,30,29,30,30,29,30,30,29],
+  1960:[6,30,29,30,29,29,30,29,30,29,30,30,29,30],
+  1961:[0,30,29,30,29,29,30,29,30,29,30,30,29],
+  1962:[0,30,29,30,30,29,29,30,29,30,29,30,29],
+  1963:[4,30,30,29,30,30,29,29,30,29,30,29,30,29],
+  1964:[0,30,29,30,30,29,30,29,29,30,29,30,29],
+  1965:[0,30,29,30,30,29,30,30,29,29,30,29,30],
+  1966:[3,29,30,29,30,29,30,30,29,30,29,30,29,30],
+  1967:[0,29,30,29,30,29,30,29,30,30,29,30,30],
+  1968:[0,29,29,30,29,29,30,29,30,30,30,29,30],
+  1969:[2,30,29,29,30,29,29,30,29,30,30,29,30,30],
+  1970:[0,29,30,29,29,30,29,29,30,30,29,30,30],
+  1971:[0,29,30,30,29,29,30,29,29,30,29,30,30],
+  1972:[6,29,30,30,29,30,29,30,29,29,30,29,30,29],
+  1973:[0,30,30,29,30,30,29,29,30,29,29,30,29],
+  1974:[0,30,30,29,30,30,29,30,29,30,29,29,30],
+  1975:[8,29,30,29,30,30,29,30,29,30,30,29,30,29],
+  1976:[0,29,30,29,29,30,30,29,30,30,29,30,29],
+  1977:[0,30,29,30,29,29,30,29,30,30,29,30,30],
+  1978:[5,29,30,29,30,29,29,30,29,30,29,30,30,30],
+  1979:[0,29,30,29,30,29,29,30,29,30,29,30,30],
+  1980:[0,30,29,30,29,30,29,29,30,29,30,29,30],
+  1981:[4,30,30,29,30,29,30,29,29,30,29,30,29,30],
+  1982:[0,30,29,30,30,29,30,29,29,30,29,30,29],
+  1983:[0,30,29,30,30,29,30,30,29,29,30,29,30],
+  1984:[10,29,30,29,30,29,30,30,29,30,29,30,29,30],
+  1985:[0,29,30,29,29,30,30,29,30,30,29,30,29],
+  1986:[0,30,29,30,29,29,30,29,30,30,29,30,30],
+  1987:[6,29,30,29,30,29,29,30,29,30,29,30,30,30],
+  1988:[0,29,30,29,30,29,29,30,29,30,29,30,30],
+  1989:[0,30,29,30,29,30,29,29,30,29,30,29,30],
+  1990:[5,29,30,30,29,30,29,30,29,29,30,29,30,29],
+  1991:[0,30,30,29,30,30,29,29,30,29,29,30,29],
+  1992:[0,30,30,29,30,30,29,30,29,30,29,29,30],
+  1993:[3,29,30,29,30,30,29,30,29,30,30,29,29,30],
+  1994:[0,29,30,29,30,29,30,30,29,30,29,30,29],
+  1995:[0,30,29,29,30,29,30,30,29,30,30,29,30],
+  1996:[8,29,29,30,29,29,30,30,29,30,30,29,30,30],
+  1997:[0,29,29,30,29,29,30,29,30,30,29,30,30],
+  1998:[0,30,29,29,30,29,29,30,29,30,29,30,30],
+  1999:[6,29,30,30,29,30,29,29,30,29,30,29,30,29],
+  2000:[0,30,30,29,30,29,30,29,29,30,29,30,29],
+  2001:[0,30,30,29,30,30,29,30,29,29,30,29,30],
+  2002:[5,29,30,29,30,30,29,30,29,30,29,30,29,29],
+  2003:[0,30,29,30,30,29,30,29,30,30,29,30,29],
+  2004:[0,29,30,29,30,29,30,29,30,30,29,30,30],
+  2005:[7,29,29,30,29,29,30,29,30,30,29,30,30,30],
+  2006:[0,29,29,30,29,29,30,29,30,29,30,30,30],
+  2007:[0,29,30,29,30,29,29,30,29,30,29,30,30],
+  2008:[5,30,29,30,29,30,29,29,30,29,30,29,30,29],
+  2009:[0,30,30,29,30,29,30,29,29,30,29,30,29],
+  2010:[0,30,30,29,30,30,29,30,29,29,30,29,29],
+  2011:[7,30,30,29,30,30,29,30,29,30,29,30,29,29],
+  2012:[0,30,29,30,30,29,30,29,30,30,29,30,29],
+  2013:[0,29,30,29,30,29,30,29,30,30,29,30,30],
+  2014:[9,29,29,30,29,29,30,29,30,29,30,30,30,29],
+  2015:[0,30,29,29,30,29,29,30,29,30,29,30,30],
+  2016:[0,30,30,29,29,30,29,29,30,29,30,29,30],
+  2017:[6,30,30,29,30,29,30,29,29,30,29,30,29,30],
+  2018:[0,30,29,30,30,29,29,30,29,29,30,29,30],
+  2019:[0,30,29,30,30,29,30,29,30,29,29,30,29],
+  2020:[4,30,30,29,30,29,30,30,29,29,30,29,30,29],
+  2021:[0,29,30,30,29,30,30,29,30,29,29,30,29],
+  2022:[0,30,29,30,29,30,30,29,30,30,29,29,30],
+  2023:[2,29,30,29,30,29,30,29,30,30,29,30,30,29],
+  2024:[0,29,30,29,29,30,29,30,30,29,30,30,29],
+  2025:[0,30,29,30,29,29,30,29,30,29,30,30,29],
+  2026:[6,30,30,29,30,29,29,30,29,30,29,30,29,30],
+  2027:[0,30,29,30,30,29,29,30,29,29,30,29,30],
+  2028:[0,29,30,30,29,30,30,29,30,29,29,30,29],
+  2029:[5,30,29,30,29,30,30,29,30,30,29,29,30,29],
+  2030:[0,30,29,30,29,30,29,30,30,29,30,29,29]
+};
+
+const lunarMonthNames = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th','12th'];
+
+function gregorianToLunar(date) {
+  const y = date.getFullYear();
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+
+  // Find which lunar year we're in
+  let lunarYear = y;
+  const sf = springFestival[y];
+  if (sf && (m < sf[0] || (m === sf[0] && d < sf[1]))) {
+    lunarYear = y - 1;
+  }
+
+  // Get Spring Festival date for the lunar year start
+  const sfData = springFestival[lunarYear];
+  if (!sfData) return { year: lunarYear, month: 1, day: 1, leapMonth: false, display: '' };
+
+  // Days elapsed since Spring Festival
+  const sfDate = new Date(lunarYear, sfData[0] - 1, sfData[1]);
+  const diffMs = date - sfDate;
+  let daysElapsed = Math.floor(diffMs / 86400000);
+
+  // Walk through lunar months
+  const months = lunarMonths[lunarYear];
+  if (!months) return { year: lunarYear, month: 1, day: daysElapsed + 1, leapMonth: false, display: '' };
+
+  const leapMonth = months[0];
+  let lunarMonth = 0;
+  let lunarDay = 0;
+  let isLeap = false;
+  let monthCount = 0; // actual month index in array (1-based after index 0)
+
+  for (let i = 1; i < months.length; i++) {
+    monthCount++;
+    // Determine which "named" month this slot represents
+    // Leap month is a repeat: if leapMonth=5, slot after month 5 is "leap 5th"
+    let namedMonth;
+    let thisIsLeap = false;
+    if (leapMonth > 0) {
+      if (monthCount <= leapMonth) {
+        namedMonth = monthCount;
+      } else if (monthCount === leapMonth + 1) {
+        namedMonth = leapMonth;
+        thisIsLeap = true;
+      } else {
+        namedMonth = monthCount - 1;
+      }
+    } else {
+      namedMonth = monthCount;
+    }
+
+    if (daysElapsed < months[i]) {
+      lunarMonth = namedMonth;
+      lunarDay = daysElapsed + 1;
+      isLeap = thisIsLeap;
+      break;
+    }
+    daysElapsed -= months[i];
+  }
+
+  // Format display string
+  const monthLabel = (isLeap ? 'Leap ' : '') + lunarMonthNames[lunarMonth - 1] + ' Month';
+  const display = `Lunar ${lunarYear} · ${monthLabel}, Day ${lunarDay}`;
+
+  return { year: lunarYear, month: lunarMonth, day: lunarDay, leapMonth: isLeap, display };
+}
+
 function getLunarYear(date) {
-  const y=date.getFullYear(), m=date.getMonth()+1, d=date.getDate();
-  const sf=springFestival[y];
-  return (sf && (m<sf[0]||(m===sf[0]&&d<sf[1]))) ? y-1 : y;
+  return gregorianToLunar(date).year;
 }
 const stems = ['Wood','Wood','Fire','Fire','Earth','Earth','Metal','Metal','Water','Water'];
 function getElement(y){ return stems[((y-4)%10+10)%10]; }
@@ -344,7 +525,8 @@ function calculate(){
   if(!input){errorEl.style.display='block';resultEl.style.display='none';return;}
   errorEl.style.display='none';
   const date=new Date(input+'T12:00:00');
-  const lunarYear=getLunarYear(date);
+  const lunar=gregorianToLunar(date);
+  const lunarYear=lunar.year;
   const animalKey=getAnimalKey(lunarYear);
   const element=getElement(lunarYear);
   const yang=isYang(lunarYear);
@@ -356,7 +538,7 @@ function calculate(){
   document.getElementById('animal-emoji').textContent=animal.emoji;
   document.getElementById('element-badge').textContent=`${yinYang} · ${element}`;
   document.getElementById('animal-name').innerHTML=`<span>${element}</span> ${animal.name}`;
-  document.getElementById('lunar-date').textContent=`Lunar Year ${lunarYear} · ${animal.char}`;
+  document.getElementById('lunar-date').textContent=lunar.display;
   document.getElementById('element-info').innerHTML=`<strong>${element}</strong> energy governs your sign, combined with the <strong>${yinYang}</strong> polarity.<br><br>${getElementDesc(element,yang)}`;
   document.getElementById('lucky-info').innerHTML=`<strong>Numbers:</strong> ${info.lucky_numbers.join(', ')}<br><strong>Colors:</strong> ${info.lucky_colors.join(', ')}<br><br><strong>Best companions:</strong> ${info.compatible.join(', ')}<br><strong>Friction with:</strong> ${info.avoid.join(', ')}`;
 
@@ -372,6 +554,9 @@ function calculate(){
       mEl.innerHTML+=`<div class="luck-row"><span class="luck-label">${luckLabels[k]}</span><div class="luck-bar"><div class="luck-fill" style="width:${v*100}%"></div></div><span class="luck-pct">${Math.round(v*100)}%</span></div>`;
     }
   });
+
+  // Hide corner brackets once result is shown
+  document.querySelectorAll('.corner').forEach(c=>c.classList.add('hidden'));
 
   resultEl.style.display='block';
   resultEl.scrollIntoView({behavior:'smooth',block:'start'});
